@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Splendor Duel">
+<meta name="theme-color" content="#101418">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Splendor Duel</title>
+<style>
+  :root {
+    --bg: #101418; --panel: #1a2027; --panel2: #232b34; --line: #2e3947;
+    --text: #e8ecf1; --dim: #8b97a5; --accent: #d4a843; --accent2: #4a90d9;
+    --good: #3ecf6e; --bad: #e05252;
+    --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); overscroll-behavior: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+    min-height: 100dvh;
+  }
+  button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; }
+  input { font: inherit; }
+  .screen { display: none; }
+  .screen.on { display: block; }
+
+  /* ---------- Home ---------- */
+  #home { min-height: 100dvh; display: none; flex-direction: column; justify-content: center; align-items: center;
+          padding: calc(var(--sat) + 20px) 24px calc(var(--sab) + 20px); gap: 14px; }
+  #home.on { display: flex; }
+  .logo { font-size: 34px; font-weight: 800; letter-spacing: 1px;
+          background: linear-gradient(120deg, #f3d27a, #d4a843 40%, #4a90d9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tagline { color: var(--dim); margin-bottom: 18px; font-size: 14px; }
+  .field { width: 100%; max-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+           padding: 14px 16px; color: var(--text); outline: none; text-align: center; font-size: 17px; }
+  .field::placeholder { color: var(--dim); }
+  #joinCode { text-transform: uppercase; letter-spacing: 8px; font-weight: 700; font-size: 22px; }
+  .btn { width: 100%; max-width: 320px; padding: 15px; border-radius: 14px; font-size: 17px; font-weight: 700;
+         background: var(--panel2); border: 1px solid var(--line); transition: transform .08s; }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { background: var(--accent); color: #1a1408; border-color: transparent; }
+  .btn.blue { background: var(--accent2); color: #fff; border-color: transparent; }
+  .btn:disabled { opacity: .4; }
+  .or { color: var(--dim); font-size: 13px; margin: 6px 0; }
+
+  /* ---------- Game ---------- */
+  #game { padding: calc(var(--sat) + 8px) max(var(--sal), 10px) calc(var(--sab) + 14px) max(var(--sar), 10px);
+          max-width: 460px; margin: 0 auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 8px; }
+  .codechip { font-weight: 800; letter-spacing: 3px; color: var(--accent); font-size: 15px; }
+  .turnchip { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 99px; background: var(--panel2); color: var(--dim); }
+  .turnchip.me { background: var(--accent); color: #1a1408; }
+
+  .pl { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; margin-bottom: 8px; }
+  .pl.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .pl .row1 { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+  .dot.on { background: var(--good); }
+  .stat { color: var(--dim); font-weight: 600; font-size: 13px; margin-left: auto; display: flex; gap: 10px; }
+  .stat b { color: var(--text); }
+  .tokrow { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; align-items: center; }
+
+  .tok { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+         font-size: 12px; font-weight: 800; border: 2px solid rgba(255,255,255,.18); flex: none; }
+  .tok.sm { width: 20px; height: 20px; font-size: 10px; border-width: 1.5px; }
+  .tok.faded { opacity: .22; }
+  .bonus { border-radius: 6px; }
+  .t-w { background: #f2f0e8; color: #555; } .t-u { background: #2f6fd0; color: #fff; }
+  .t-g { background: #2e9e4f; color: #fff; } .t-r { background: #d23b3b; color: #fff; }
+  .t-k { background: #2b2b30; color: #ddd; border-color: #555 !important; }
+  .t-p { background: radial-gradient(circle at 35% 30%, #fff, #efc4d8 55%, #c98bb0); color: #7c3a63; }
+  .t-o { background: radial-gradient(circle at 35% 30%, #ffe9a8, #e6b84a 60%, #b98a1e); color: #5d4408; }
+  .t-x { background: conic-gradient(#f2f0e8, #2f6fd0, #2e9e4f, #d23b3b, #2b2b30, #f2f0e8); color: #fff; }
+
+  /* board */
+  .boardwrap { display: flex; gap: 10px; align-items: stretch; margin-bottom: 8px; }
+  #board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; flex: 1;
+           background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px; }
+  .cell { aspect-ratio: 1; border-radius: 50%; background: #0c1014; border: 1.5px dashed #27313c;
+          display: flex; align-items: center; justify-content: center; position: relative; }
+  .cell .tok { width: 86%; height: 86%; font-size: 0; }
+  .cell.sel { outline: 3px solid var(--accent); outline-offset: 1px; }
+  .cell.sel::after { content: attr(data-n); position: absolute; top: -4px; right: -4px; width: 16px; height: 16px;
+          background: var(--accent); color: #1a1408; border-radius: 50%; font-size: 11px; font-weight: 800;
+          display: flex; align-items: center; justify-content: center; }
+  .side { display: flex; flex-direction: column; gap: 6px; justify-content: center; width: 56px; }
+  .sidebox { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 4px;
+             text-align: center; font-size: 11px; color: var(--dim); font-weight: 600; }
+  .sidebox b { display: block; font-size: 16px; color: var(--text); }
+
+  .actions { display: flex; gap: 8px; margin-bottom: 10px; }
+  .abtn { flex: 1; padding: 11px 4px; border-radius: 12px; font-size: 13px; font-weight: 700;
+          background: var(--panel2); border: 1px solid var(--line); color: var(--text); }
+  .abtn:disabled { opacity: .35; }
+  .abtn.go { background: var(--accent); color: #1a1408; border-color: transparent; }
+  .abtn.armed { background: var(--accent2); color: #fff; border-color: transparent; }
+
+  /* royals + cards */
+  .seclabel { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase;
+              letter-spacing: 1px; margin: 8px 2px 5px; display: flex; justify-content: space-between; }
+  .cardrow { display: flex; gap: 7px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
+  .cardrow::-webkit-scrollbar { display: none; }
+  .card { flex: none; width: 66px; height: 92px; border-radius: 10px; background: linear-gradient(160deg, #2a323c, #1d242c);
+          border: 1px solid var(--line); position: relative; padding: 5px; display: flex; flex-direction: column; }
+  .card.royal { width: 60px; height: 80px; background: linear-gradient(160deg, #3a3450, #241f33); border-color: #4d4570; }
+  .card .top { display: flex; align-items: flex-start; gap: 3px; }
+  .card .pts { font-size: 17px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .card .crowns { font-size: 10px; line-height: 1.4; }
+  .card .bns { margin-left: auto; }
+  .card .ab { font-size: 11px; color: #9ad; margin-top: 2px; font-weight: 700; }
+  .card .cost { margin-top: auto; display: flex; flex-wrap: wrap; gap: 2px; }
+  .cost .tok { width: 16px; height: 16px; font-size: 9px; border-width: 1px; }
+  .card.back { align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #232b34, #232b34 6px, #1c232b 6px, #1c232b 12px); }
+  .card.back .tier { font-size: 20px; font-weight: 800; color: var(--dim); }
+  .card.back .cnt { font-size: 11px; color: var(--dim); }
+  .card.hiddenc { align-items: center; justify-content: center; }
+  .card.empty { opacity: .15; }
+  .card.afford::before { content: ''; position: absolute; inset: -1px; border-radius: 10px;
+          border: 2px solid var(--good); pointer-events: none; }
+
+  /* my panel */
+  .mine .tokrow .tok { width: 30px; height: 30px; font-size: 13px; }
+
+  .logbox { font-size: 12px; color: var(--dim); padding: 8px 4px 0; line-height: 1.5; min-height: 40px; }
+  .logbox .last { color: var(--text); }
+
+  /* sheet & modal */
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; z-index: 50;
+             align-items: flex-end; justify-content: center; }
+  #overlay.on { display: flex; }
+  #sheet { background: var(--panel); border-radius: 20px 20px 0 0; width: 100%; max-width: 460px;
+           padding: 18px 18px calc(var(--sab) + 18px); border-top: 1px solid var(--line); }
+  #sheet h3 { margin: 0 0 12px; font-size: 16px; }
+  .sheetcards { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .sheetbtns { display: flex; flex-direction: column; gap: 8px; }
+  .pickrow { display: flex; gap: 10px; justify-content: center; margin: 8px 0 14px; flex-wrap: wrap; }
+  .pick { width: 44px; height: 44px; border-radius: 50%; font-size: 15px; font-weight: 800;
+          border: 2px solid rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; }
+  .pick:active { transform: scale(.92); }
+  .pick:disabled { opacity: .25; }
+
+  #toast { position: fixed; left: 50%; bottom: calc(var(--sab) + 24px); transform: translateX(-50%) translateY(20px);
+           background: #2c1f1f; color: #ffb4b4; border: 1px solid #5a3030; padding: 10px 18px; border-radius: 12px;
+           font-size: 14px; font-weight: 600; opacity: 0; transition: all .25s; z-index: 99; pointer-events: none;
+           max-width: 90vw; text-align: center; }
+  #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.info { background: #1f2a22; color: #a9e8bd; border-color: #2f5a3c; }
+
+  /* full overlays (lobby / win) */
+  .bigover { position: fixed; inset: 0; background: rgba(12,16,20,.96); z-index: 40; display: none;
+             flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
+  .bigover.on { display: flex; }
+  .bigcode { font-size: 52px; font-weight: 800; letter-spacing: 14px; color: var(--accent); padding-left: 14px; }
+  .pulse { color: var(--dim); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
+</style>
+</head>
+<body>
+
+<!-- ===================== HOME ===================== -->
+<div id="home" class="screen on">
+  <div class="logo">SPLENDOR DUEL</div>
+  <div class="tagline">Two players. One throne.</div>
+  <input id="name" class="field" maxlength="16" placeholder="Your name" autocomplete="off">
+  <button id="createBtn" class="btn primary">Create Game</button>
+  <div class="or">— or join a game —</div>
+  <input id="joinCode" class="field" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters">
+  <button id="joinBtn" class="btn blue">Join Game</button>
+</div>
+
+<!-- ===================== GAME ===================== -->
+<div id="game" class="screen">
+  <div class="topbar">
+    <span class="codechip" id="codeChip"></span>
+    <span class="turnchip" id="turnChip"></span>
+  </div>
+
+  <div class="pl" id="oppPanel"></div>
+
+  <div class="boardwrap">
+    <div id="board"></div>
+    <div class="side">
+      <div class="sidebox">Bag<b id="bagCnt">–</b></div>
+      <div class="sidebox">Scrolls<b id="privCnt">–</b></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="abtn" id="takeBtn">Take</button>
+    <button class="abtn" id="privBtn">📜 Privilege</button>
+    <button class="abtn" id="replBtn">Replenish</button>
+  </div>
+
+  <div class="seclabel"><span>Royal Cards</span></div>
+  <div class="cardrow" id="royalRow"></div>
+
+  <div class="seclabel"><span>Cards</span></div>
+  <div class="cardrow" id="row3"></div>
+  <div class="cardrow" id="row2"></div>
+  <div class="cardrow" id="row1"></div>
+
+  <div class="pl mine" id="myPanel"></div>
+  <div class="seclabel"><span>My Reserved</span></div>
+  <div class="cardrow" id="myReserved"></div>
+
+  <div class="logbox" id="logBox"></div>
+</div>
+
+<!-- sheet / modal -->
+<div id="overlay"><div id="sheet"></div></div>
+
+<!-- lobby overlay -->
+<div class="bigover" id="lobby">
+  <div class="logo">SPLENDOR DUEL</div>
+  <div>Share this code with your opponent</div>
+  <div class="bigcode" id="lobbyCode"></div>
+  <div class="pulse">Waiting for opponent…</div>
+  <button class="btn" id="lobbyLeave" style="max-width:200px">Leave</button>
+</div>
+
+<!-- win overlay -->
+<div class="bigover" id="winOver">
+  <div style="font-size:56px">👑</div>
+  <div style="font-size:26px;font-weight:800" id="winTitle"></div>
+  <div class="tagline" id="winWhy"></div>
+  <button class="btn primary" id="rematchBtn" style="max-width:240px">Rematch</button>
+  <button class="btn" id="homeBtn" style="max-width:240px">Home</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ============================================================================
+// CONFIG — set this to your deployed Worker URL (no trailing slash)
+// ============================================================================
+const WORKER_URL = 'https://splendor-duel.manuobelleiro00.workers.dev';
+
+const COLORS = ['w', 'u', 'g', 'r', 'k'];
+const GEM_NAMES = { w: 'White', u: 'Blue', g: 'Green', r: 'Red', k: 'Black', p: 'Pearl', o: 'Gold' };
+const AB_LABEL = { again: '↻ play again', steal: '✊ steal token', take: '+1 matching gem', priv: '+1 📜' };
+
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------------------
+// Connection
+// ---------------------------------------------------------------------------
+let ws = null, code = null, mySeat = null, S = null, names = [], present = [];
+let sel = [];                 // selected board cells for "take"
+let privMode = false;         // next board tap spends a privilege
+let wantReconnect = false;
+
+function wsURL(c) {
+  return WORKER_URL.replace(/^http/, 'ws') + '/ws/' + c;
+}
+
+async function createGame() {
+  $('createBtn').disabled = true;
+  try {
+    const r = await fetch(WORKER_URL + '/api/create', { method: 'POST' });
+    const j = await r.json();
+    if (!j.code) throw new Error(j.error || 'No code');
+    connect(j.code);
+  } catch (e) {
+    toast('Could not reach server. Check WORKER_URL.', false);
+  }
+  $('createBtn').disabled = false;
+}
+
+function connect(c) {
+  code = c.toUpperCase();
+  wantReconnect = true;
+  const token = localStorage.getItem('sd-token-' + code) || '';
+  const name = ($('name').value || localStorage.getItem('sd-name') || '').trim();
+  if (name) localStorage.setItem('sd-name', name);
+  const url = wsURL(code) + '?name=' + encodeURIComponent(name) + (token ? '&token=' + token : '');
+  ws = new WebSocket(url);
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.t === 'joined') {
+      mySeat = m.seat;
+      localStorage.setItem('sd-token-' + code, m.token);
+      localStorage.setItem('sd-last', code);
+      showGame();
+    } else if (m.t === 'state') {
+      mySeat = m.seat; names = m.names; present = m.present; S = m.state;
+      render();
+    } else if (m.t === 'error') {
+      toast(m.msg, false);
+    }
+  };
+  ws.onclose = (ev) => {
+    if (ev.code === 1006 && !S && mySeat === null) {
+      toast('Could not join — room full or not found.', false);
+      wantReconnect = false;
+      goHome();
+      return;
+    }
+    if (wantReconnect) setTimeout(() => { if (wantReconnect) connect(code); }, 1500);
+  };
+}
+
+function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+function act(action) { send({ t: 'action', action }); }
+
+function showGame() {
+  $('home').classList.remove('on');
+  $('game').classList.add('on');
+  $('codeChip').textContent = code;
+  $('lobbyCode').textContent = code;
+  if (location.hash !== '#' + code) history.replaceState(null, '', '#' + code);
+  render();
+}
+
+function goHome() {
+  wantReconnect = false;
+  if (ws) ws.close();
+  ws = null; S = null; mySeat = null; code = null; sel = []; privMode = false;
+  $('game').classList.remove('on');
+  $('lobby').classList.remove('on');
+  $('winOver').classList.remove('on');
+  $('home').classList.add('on');
+  history.replaceState(null, '', '#');
+}
+
+// ---------------------------------------------------------------------------
+// Rules mirrors (UX hints only — the server is authoritative)
+// ---------------------------------------------------------------------------
+function lineOK(cells) {
+  if (cells.length <= 1) return cells.length === 1;
+  const pts = cells.map((i) => [Math.floor(i / 5), i % 5]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const dr = pts[1][0] - pts[0][0], dc = pts[1][1] - pts[0][1];
+  if (Math.abs(dr) > 1 || Math.abs(dc) > 1 || (dr === 0 && dc === 0)) return false;
+  for (let i = 2; i < pts.length; i++)
+    if (pts[i][0] - pts[i - 1][0] !== dr || pts[i][1] - pts[i - 1][1] !== dc) return false;
+  return true;
+}
+
+function canAfford(p, card) {
+  if (card.hidden) return false;
+  if (card.b === 'x' && !COLORS.some((c) => p.bonus[c] > 0)) return false;
+  let gold = 0;
+  for (const [c, n] of Object.entries(card.cost)) {
+    const disc = c === 'p' ? 0 : (p.bonus[c] || 0);
+    gold += Math.max(0, Math.max(0, n - disc) - p.tokens[c]);
+  }
+  return gold <= p.tokens.o;
+}
+
+const myTurn = () => S && S.phase === 'playing' && S.turn === mySeat;
+const pend = () => (S && S.pending.length ? S.pending[0] : null);
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+function tokHTML(c, n, cls = '') {
+  return `<span class="tok t-${c} ${cls}">${n != null ? n : ''}</span>`;
+}
+
+function cardHTML(card, extra = '') {
+  if (!card) return `<div class="card empty"></div>`;
+  if (card.hidden) return `<div class="card hiddenc back" ${extra}><div class="tier">${card.t}</div><div class="cnt">hidden</div></div>`;
+  const crowns = card.crowns ? '👑'.repeat(card.crowns) : '';
+  const bns = card.b ? `<span class="tok sm bonus t-${card.b} bns"></span>` : '';
+  const ab = card.ab ? `<div class="ab">${AB_LABEL[card.ab]}</div>` : '';
+  const cost = Object.entries(card.cost || {}).filter(([, n]) => n > 0)
+    .map(([c, n]) => `<span class="tok t-${c}">${n}</span>`).join('');
+  return `<div class="card" ${extra}>
+    <div class="top"><span class="pts">${card.pts || ''}</span><span class="crowns">${crowns}</span>${bns}</div>
+    ${ab}<div class="cost">${cost}</div></div>`;
+}
+
+function royalHTML(r, extra = '') {
+  const ab = r.ab ? `<div class="ab">${AB_LABEL[r.ab]}</div>` : '';
+  return `<div class="card royal" ${extra}><div class="top"><span class="pts">${r.pts}</span><span class="crowns">👑</span></div>${ab}</div>`;
+}
+
+function playerPanel(elId, seat) {
+  const p = S.players[seat];
+  const isMe = seat === mySeat;
+  const online = present.includes(seat);
+  const el = $(elId);
+  el.classList.toggle('active', S.phase === 'playing' && S.turn === seat);
+  const toks = [...COLORS, 'p', 'o'].map((c) => tokHTML(c, p.tokens[c], p.tokens[c] ? '' : 'faded')).join('');
+  const bonuses = COLORS.filter((c) => p.bonus[c]).map((c) => tokHTML(c, p.bonus[c], 'bonus sm')).join('');
+  el.innerHTML = `
+    <div class="row1"><span class="dot ${online ? 'on' : ''}"></span>${esc(p.name)}${isMe ? ' (you)' : ''}
+      <span class="stat"><span>⭐ <b>${p.points}</b></span><span>👑 <b>${p.crowns}</b></span><span>📜 <b>${p.priv}</b></span></span>
+    </div>
+    <div class="tokrow">${toks}${bonuses ? '<span style="width:8px"></span>' + bonuses : ''}</div>`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function render() {
+  // lobby overlay until both players have joined and the game exists
+  $('lobby').classList.toggle('on', !!code && !S && $('game').classList.contains('on'));
+  if (!S) return;
+
+  // top
+  const tc = $('turnChip');
+  if (S.phase === 'over') { tc.textContent = 'Game over'; tc.classList.remove('me'); }
+  else if (myTurn()) { tc.textContent = 'Your turn'; tc.classList.add('me'); }
+  else { tc.textContent = `${S.players[S.turn].name}'s turn`; tc.classList.remove('me'); }
+
+  playerPanel('oppPanel', 1 - mySeat);
+  playerPanel('myPanel', mySeat);
+
+  // board
+  sel = sel.filter((i) => S.board[i] && S.board[i] !== 'o');
+  const b = $('board');
+  b.innerHTML = S.board.map((t, i) => {
+    const selIdx = sel.indexOf(i);
+    return `<div class="cell ${selIdx >= 0 ? 'sel' : ''}" data-n="${selIdx + 1}" data-i="${i}">${t ? tokHTML(t) : ''}</div>`;
+  }).join('');
+  b.querySelectorAll('.cell').forEach((c) => c.addEventListener('click', () => cellTap(+c.dataset.i)));
+
+  $('bagCnt').textContent = S.bagCount;
+  $('privCnt').textContent = '📜'.repeat(S.privSupply) || '0';
+
+  // action buttons
+  const me = S.players[mySeat];
+  const tb = $('takeBtn');
+  tb.textContent = sel.length ? `Take ${sel.length}` : 'Take';
+  tb.disabled = !(myTurn() && !pend() && sel.length && lineOK(sel));
+  tb.classList.toggle('go', !tb.disabled);
+  const pb = $('privBtn');
+  pb.disabled = !(myTurn() && !pend() && !S.done && me.priv > 0 && S.board.some((t) => t && t !== 'o'));
+  pb.classList.toggle('armed', privMode);
+  pb.textContent = privMode ? 'Tap a gem…' : '📜 Privilege';
+  $('replBtn').disabled = !(myTurn() && !pend() && !S.done && S.bagCount > 0 && S.board.some((t) => t === null));
+
+  // royals
+  $('royalRow').innerHTML = S.royals.map((r) => royalHTML(r)).join('') || '<span style="color:var(--dim);font-size:12px">All claimed</span>';
+
+  // pyramid rows (tier 3 on top), deck back first
+  for (const t of [3, 2, 1]) {
+    const row = $('row' + t);
+    const deck = `<div class="card back" data-deck="${t}"><div class="tier">${'I'.repeat(t)}</div><div class="cnt">${S.deckCounts[t]}</div></div>`;
+    row.innerHTML = deck + S.open[t].map((card, idx) => {
+      const aff = card && !card.hidden && myTurn() && canAfford(me, card) ? 'afford' : '';
+      return cardHTML(card, `data-tier="${t}" data-idx="${idx}"`).replace('class="card', `class="card ${aff}`);
+    }).join('');
+    row.querySelectorAll('.card[data-idx]').forEach((el) => {
+      el.addEventListener('click', () => openCardSheet('open', +el.dataset.tier, +el.dataset.idx));
+    });
+    row.querySelector('[data-deck]').addEventListener('click', () => openDeckSheet(t));
+  }
+
+  // my reserved
+  const mr = $('myReserved');
+  mr.innerHTML = me.reserved.map((c, i) => {
+    const aff = myTurn() && canAfford(me, c) ? 'afford' : '';
+    return cardHTML(c, `data-ridx="${i}"`).replace('class="card', `class="card ${aff}`);
+  }).join('') || '<span style="color:var(--dim);font-size:12px">None — reserve a card to take a gold token</span>';
+  mr.querySelectorAll('.card[data-ridx]').forEach((el) => {
+    el.addEventListener('click', () => openCardSheet('reserved', null, +el.dataset.ridx));
+  });
+
+  // log
+  $('logBox').innerHTML = S.log.slice(-3).map((l, i, a) =>
+    `<div class="${i === a.length - 1 ? 'last' : ''}">${esc(l)}</div>`).join('');
+
+  renderPending();
+  renderWin();
+}
+
+// ---------------------------------------------------------------------------
+// Interactions
+// ---------------------------------------------------------------------------
+function cellTap(i) {
+  if (!myTurn() || pend() || S.done) return;
+  const t = S.board[i];
+  if (privMode) {
+    privMode = false;
+    if (t && t !== 'o') act({ type: 'privilege', cell: i });
+    else { toast('Pick a gem or pearl.', false); render(); }
+    return;
+  }
+  if (!t || t === 'o') return;
+  const at = sel.indexOf(i);
+  if (at >= 0) sel.splice(at, 1);
+  else if (sel.length < 3) sel.push(i);
+  render();
+}
+
+$('takeBtn').addEventListener('click', () => {
+  if (sel.length && lineOK(sel)) { act({ type: 'take', cells: sel.slice() }); sel = []; }
+});
+$('privBtn').addEventListener('click', () => { privMode = !privMode; sel = []; render(); });
+$('replBtn').addEventListener('click', () => act({ type: 'replenish' }));
+$('createBtn').addEventListener('click', createGame);
+$('joinBtn').addEventListener('click', () => {
+  const c = $('joinCode').value.trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(c)) return toast('Enter the 4-letter code.', false);
+  connect(c);
+});
+$('lobbyLeave').addEventListener('click', goHome);
+$('homeBtn').addEventListener('click', goHome);
+$('rematchBtn').addEventListener('click', () => send({ t: 'rematch' }));
+$('overlay').addEventListener('click', (e) => { if (e.target.id === 'overlay' && !pendingLocked) closeSheet(); });
+
+// ---------------------------------------------------------------------------
+// Card sheet (buy / reserve)
+// ---------------------------------------------------------------------------
+let pendingLocked = false;
+
+function openSheet(html) { $('sheet').innerHTML = html; $('overlay').classList.add('on'); }
+function closeSheet() { $('overlay').classList.remove('on'); pendingLocked = false; }
+
+function openCardSheet(kind, tier, idx) {
+  if (pendingLocked) return;
+  const me = S.players[mySeat];
+  const card = kind === 'open' ? S.open[tier][idx] : me.reserved[idx];
+  if (!card || card.hidden) return;
+  const goldOnBoard = S.board.includes('o');
+  const canAct = myTurn() && !pend() && !S.done;
+  const buyOK = canAct && canAfford(me, card);
+  const resOK = canAct && kind === 'open' && me.reserved.length < 3 && goldOnBoard;
+  let btns = `<button class="btn primary" id="shBuy" ${buyOK ? '' : 'disabled'}>Buy</button>`;
+  if (kind === 'open') {
+    btns += `<button class="btn blue" id="shRes" ${resOK ? '' : 'disabled'}>Reserve + take 🟡</button>`;
+  }
+  btns += `<button class="btn" id="shCancel">Cancel</button>`;
+  openSheet(`<h3>Tier ${card.t} card</h3><div class="sheetcards">${cardHTML(card)}</div>
+    ${card.b === 'x' ? '<div style="font-size:12px;color:var(--dim);text-align:center;margin-bottom:10px">Wild: counts as a color you already own</div>' : ''}
+    <div class="sheetbtns">${btns}</div>`);
+  $('shCancel').addEventListener('click', closeSheet);
+  $('shBuy').addEventListener('click', () => {
+    act(kind === 'open' ? { type: 'buy', kind: 'open', tier, idx } : { type: 'buy', kind: 'reserved', idx });
+    closeSheet();
+  });
+  const r = $('shRes');
+  if (r) r.addEventListener('click', () => { act({ type: 'reserve', kind: 'open', tier, idx }); closeSheet(); });
+}
+
+function openDeckSheet(tier) {
+  if (pendingLocked) return;
+  const me = S.players[mySeat];
+  const ok = myTurn() && !pend() && !S.done && me.reserved.length < 3 && S.board.includes('o') && S.deckCounts[tier] > 0;
+  openSheet(`<h3>Tier ${tier} deck — ${S.deckCounts[tier]} cards</h3>
+    <div class="sheetbtns">
+      <button class="btn blue" id="shResD" ${ok ? '' : 'disabled'}>Reserve top card + take 🟡</button>
+      <button class="btn" id="shCancel">Cancel</button>
+    </div>`);
+  $('shCancel').addEventListener('click', closeSheet);
+  $('shResD').addEventListener('click', () => { act({ type: 'reserve', kind: 'deck', tier }); closeSheet(); });
+}
+
+// ---------------------------------------------------------------------------
+// Pending choices (wild color, steal, royal, discard)
+// ---------------------------------------------------------------------------
+let discardSel = null;
+
+function renderPending() {
+  const p = pend();
+  if (!p || S.turn !== mySeat) {
+    if (pendingLocked) closeSheet();
+    discardSel = null;
+    return;
+  }
+  pendingLocked = true;
+  const me = S.players[mySeat], op = S.players[1 - mySeat];
+
+  if (p.type === 'color') {
+    const picks = COLORS.map((c) =>
+      `<button class="pick t-${c}" data-c="${c}" ${me.bonus[c] ? '' : 'disabled'}>${me.bonus[c] || ''}</button>`).join('');
+    openSheet(`<h3>Wild card — choose its color</h3>
+      <div style="font-size:13px;color:var(--dim);margin-bottom:8px">It permanently counts as that color (${p.pts} pts).</div>
+      <div class="pickrow">${picks}</div>`);
+    $('sheet').querySelectorAll('.pick').forEach((b) =>
+      b.addEventListener('click', () => act({ type: 'resolve', resolve: { type: 'color', color: b.dataset.c } })));
+  } else if (p.type === 'steal') {
+    const picks = [...COLORS, 'p'].map((c) =>
+      `<button class="pick t-${c}" data-c="${c}" ${op.tokens[c] ? '' : 'disabled'}>${op.tokens[c] || ''}</button>`).join('');
+    openSheet(`<h3>Steal a token from ${esc(op.name)}</h3><div class="pickrow">${picks}</div>`);
+    $('sheet').querySelectorAll('.pick').forEach((b) =>
+      b.addEventListener('click', () => act({ type: 'resolve', resolve: { type: 'steal', color: b.dataset.c } })));
+  } else if (p.type === 'royal') {
+    const cards = S.royals.map((r, i) => royalHTML(r, `data-i="${i}"`)).join('');
+    openSheet(`<h3>👑 Choose a royal card</h3><div class="sheetcards">${cards}</div>`);
+    $('sheet').querySelectorAll('.card[data-i]').forEach((el) =>
+      el.addEventListener('click', () => act({ type: 'resolve', resolve: { type: 'royal', idx: +el.dataset.i } })));
+  } else if (p.type === 'discard') {
+    if (!discardSel) discardSel = { w: 0, u: 0, g: 0, r: 0, k: 0, p: 0, o: 0 };
+    const total = Object.values(discardSel).reduce((a, b) => a + b, 0);
+    const picks = [...COLORS, 'p', 'o'].map((c) => {
+      const have = me.tokens[c] - discardSel[c];
+      return `<button class="pick t-${c}" data-c="${c}" ${have ? '' : 'disabled'}>${have}</button>`;
+    }).join('');
+    const chosen = Object.entries(discardSel).filter(([, n]) => n).map(([c, n]) => tokHTML(c, n)).join('') || '<span style="color:var(--dim)">tap tokens above</span>';
+    openSheet(`<h3>Over 10 tokens — discard ${p.count}</h3>
+      <div class="pickrow">${picks}</div>
+      <div style="text-align:center;margin-bottom:12px">Discarding: ${chosen}</div>
+      <div class="sheetbtns">
+        <button class="btn" id="dReset">Reset</button>
+        <button class="btn primary" id="dGo" ${total === p.count ? '' : 'disabled'}>Discard</button>
+      </div>`);
+    $('sheet').querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => {
+      const c = b.dataset.c;
+      if (Object.values(discardSel).reduce((a, x) => a + x, 0) < p.count && me.tokens[c] - discardSel[c] > 0) discardSel[c]++;
+      renderPending();
+    }));
+    $('dReset').addEventListener('click', () => { discardSel = null; renderPending(); });
+    $('dGo').addEventListener('click', () => {
+      act({ type: 'resolve', resolve: { type: 'discard', tokens: discardSel } });
+      discardSel = null;
+    });
+  }
+}
+
+function renderWin() {
+  const over = S.phase === 'over';
+  $('winOver').classList.toggle('on', over);
+  if (!over) return;
+  const w = S.players[S.winner];
+  $('winTitle').textContent = S.winner === mySeat ? 'You win!' : `${w.name} wins`;
+  const why = { points: `${w.points} prestige points`, crowns: `${w.crowns} crowns`, color: '10 points in one color' };
+  $('winWhy').textContent = 'Victory by ' + why[S.winReason];
+}
+
+// ---------------------------------------------------------------------------
+// Toast / boot
+// ---------------------------------------------------------------------------
+let toastTimer = null;
+function toast(msg, ok) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'on' + (ok ? ' info' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.className = ''), 2600);
+}
+
+// restore name; auto-fill code from URL hash (e.g. shared link app.html#KXMB)
+$('name').value = localStorage.getItem('sd-name') || '';
+const hashCode = location.hash.slice(1).toUpperCase();
+if (/^[A-Z]{4}$/.test(hashCode)) $('joinCode').value = hashCode;
+$('joinCode').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
