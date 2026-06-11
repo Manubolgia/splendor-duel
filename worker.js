@@ -573,6 +573,17 @@ export class GameRoom {
       this.room.game = newGame(this.room.seats.map((s) => s.name), first);
       await this.save();
       this.broadcast();
+    } else if (msg.t === 'leave') {
+      // Explicitly tear down the room for a clean game cycle: tell every
+      // connected client the room closed, drop the state, and close sockets.
+      for (const sock of this.state.getWebSockets()) {
+        try { sock.send(JSON.stringify({ t: 'closed' })); } catch {}
+      }
+      this.room = null;
+      await this.state.storage.delete('room');
+      for (const sock of this.state.getWebSockets()) {
+        try { sock.close(1000, 'room closed'); } catch {}
+      }
     }
   }
 

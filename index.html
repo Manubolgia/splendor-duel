@@ -59,6 +59,9 @@
   .codechip { font-weight: 800; letter-spacing: 3px; color: var(--accent); font-size: 15px; }
   .turnchip { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 99px; background: var(--panel2); color: var(--dim); }
   .turnchip.me { background: var(--accent); color: #1a1408; }
+  .leavebtn { font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 99px;
+              background: var(--panel2); border: 1px solid var(--line); color: var(--dim); }
+  .leavebtn:active { transform: scale(.94); }
 
   .pl { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; margin-bottom: 8px; }
   .pl.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -181,7 +184,10 @@
 <div id="game" class="screen">
   <div class="topbar">
     <span class="codechip" id="codeChip"></span>
-    <span class="turnchip" id="turnChip"></span>
+    <span style="display:flex;align-items:center;gap:8px">
+      <span class="turnchip" id="turnChip"></span>
+      <button class="leavebtn" id="leaveBtn">Leave</button>
+    </span>
   </div>
 
   <div class="pl" id="oppPanel"></div>
@@ -258,6 +264,7 @@ let ws = null, code = null, mySeat = null, S = null, names = [], present = [];
 let sel = [];                 // selected board cells for "take"
 let privMode = false;         // next board tap spends a privilege
 let wantReconnect = false;
+let leaving = false;          // true while we are tearing down our own room
 
 function wsURL(c) {
   return WORKER_URL.replace(/^http/, 'ws') + '/ws/' + c;
@@ -296,6 +303,13 @@ function connect(c) {
       render();
     } else if (m.t === 'error') {
       toast(m.msg, false);
+    } else if (m.t === 'closed') {
+      // Room was torn down (by me or the opponent). Forget this seat and
+      // return to the menu — the code is now dead.
+      const leaver = leaving;
+      localStorage.removeItem('sd-token-' + code);
+      goHome();
+      if (!leaver) toast('Opponent left — the game was closed.', false);
     }
   };
   ws.onclose = (ev) => {
@@ -324,7 +338,7 @@ function showGame() {
 function goHome() {
   wantReconnect = false;
   if (ws) ws.close();
-  ws = null; S = null; mySeat = null; code = null; sel = []; privMode = false;
+  ws = null; S = null; mySeat = null; code = null; sel = []; privMode = false; leaving = false;
   $('game').classList.remove('on');
   $('lobby').classList.remove('on');
   $('winOver').classList.remove('on');
@@ -504,8 +518,21 @@ $('joinBtn').addEventListener('click', () => {
   if (!/^[A-Z]{4}$/.test(c)) return toast('Enter the 4-letter code.', false);
   connect(c);
 });
-$('lobbyLeave').addEventListener('click', goHome);
+$('lobbyLeave').addEventListener('click', leaveRoom);
 $('homeBtn').addEventListener('click', goHome);
+$('leaveBtn').addEventListener('click', leaveRoom);
+
+function leaveRoom() {
+  if (S && S.phase === 'playing' && !confirm('Leave and close this game for both players?')) return;
+  leaving = true;
+  if (ws && ws.readyState === 1) {
+    send({ t: 'leave' });
+    // Fallback: if the server never echoes 'closed', go home anyway.
+    setTimeout(() => { if (leaving) { localStorage.removeItem('sd-token-' + code); goHome(); } }, 1500);
+  } else {
+    goHome();
+  }
+}
 $('rematchBtn').addEventListener('click', () => send({ t: 'rematch' }));
 $('overlay').addEventListener('click', (e) => { if (e.target.id === 'overlay' && !pendingLocked) closeSheet(); });
 
