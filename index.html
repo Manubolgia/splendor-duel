@@ -231,8 +231,12 @@
   /* my panel */
   .mine .tokrow .tok { width: 30px; height: 30px; font-size: 13px; }
 
-  .logbox { font-size: 12px; color: var(--dim); padding: 8px 4px 0; line-height: 1.5; min-height: 40px; }
+  .logbox { font-size: 12px; color: var(--dim); padding: 8px 4px; line-height: 1.6;
+    height: 84px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+  .logbox div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .logbox .last { color: var(--text); }
+  .logbox .turnno { display: inline-block; min-width: 26px; margin-right: 6px;
+    color: rgba(217, 184, 108, .7); font-variant-numeric: tabular-nums; font-size: 11px; }
 
   /* sheet & modal */
   #overlay { position: fixed; inset: 0; background: rgba(4, 6, 9, .72); display: none; z-index: 50;
@@ -795,7 +799,7 @@ function renderPass() {
   $('passOver').classList.toggle('on', show);
   if (show) {
     $('passName').textContent = local.names[local.st.turn];
-    closeSheet(); // pending choices belong to the next player
+    closeSheet(true); // pending choices belong to the next player
   }
 }
 $('passGo').addEventListener('click', () => {
@@ -977,9 +981,16 @@ function render() {
     el.addEventListener('click', () => openCardSheet('reserved', null, +el.dataset.ridx));
   });
 
-  // log
-  $('logBox').innerHTML = S.log.slice(-3).map((l, i, a) =>
-    `<div class="${i === a.length - 1 ? 'last' : ''}">${esc(l)}</div>`).join('');
+  // log — scrollable history, newest at the bottom, with turn numbers
+  const lb = $('logBox');
+  const atBottom = lb.scrollHeight - lb.scrollTop - lb.clientHeight < 8;
+  lb.innerHTML = S.log.map((l, i, a) => {
+    const n = (l && typeof l === 'object') ? l.n : null;
+    const msg = (l && typeof l === 'object') ? l.msg : l;
+    const tag = n ? `<span class="turnno">T${n}</span>` : '';
+    return `<div class="${i === a.length - 1 ? 'last' : ''}">${tag}${esc(msg)}</div>`;
+  }).join('');
+  if (atBottom) lb.scrollTop = lb.scrollHeight;
 
   renderPending();
   renderWin();
@@ -1058,7 +1069,16 @@ $('overlay').addEventListener('click', (e) => { if (e.target.id === 'overlay' &&
 let pendingLocked = false;
 
 function openSheet(html) { $('sheet').innerHTML = html; $('overlay').classList.add('on'); }
-function closeSheet() { $('overlay').classList.remove('on'); pendingLocked = false; }
+// Closing a sheet must never wipe a pending-choice menu. After an action like
+// "buy a steal card", act() synchronously re-renders and renderPending() opens
+// the steal menu (locking it); the caller's trailing closeSheet() would then
+// immediately close it again. So a normal close is a no-op while locked.
+// Use closeSheet(true) to force it (pass-and-play hand-off, rematch).
+function closeSheet(force) {
+  if (pendingLocked && !force) return;
+  $('overlay').classList.remove('on');
+  pendingLocked = false;
+}
 
 function openCardSheet(kind, tier, idx) {
   if (pendingLocked) return;
@@ -1124,7 +1144,7 @@ function refMarketHTML() {
 function renderPending() {
   const p = pend();
   if (!p || S.turn !== mySeat) {
-    if (pendingLocked) closeSheet();
+    if (pendingLocked) closeSheet(true);
     discardSel = null;
     return;
   }

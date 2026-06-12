@@ -75,7 +75,7 @@ function player(name) {
         if (!finished) {
           finished = true;
           console.log(`game over after ${moves} moves — winner seat ${st.winner} by ${st.winReason}`);
-          console.log('last log:', st.log.slice(-2).join(' | '));
+          console.log('last log:', st.log.slice(-2).map((l) => l.msg ?? l).join(' | '));
           // verify sanitization: opponent's deck-reserved cards must be hidden
           const oppRes = st.players[1 - m.seat].reserved;
           if (oppRes.some((c) => !c.pub && !c.hidden)) { console.error('LEAK: face-down reserved card visible'); process.exit(1); }

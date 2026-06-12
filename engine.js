@@ -127,6 +127,7 @@ function newGame(names, firstSeat = 0) {
     players,
     turn: firstSeat,
     firstSeat,
+    turnNo: 1,
     pending: [],
     again: false,
     done: false,
@@ -140,7 +141,7 @@ function newGame(names, firstSeat = 0) {
 }
 
 function log(st, msg) {
-  st.log.push(msg);
+  st.log.push({ n: st.turnNo, msg });
   if (st.log.length > 60) st.log.splice(0, st.log.length - 60);
 }
 
@@ -277,6 +278,7 @@ function maybeEndTurn(st) {
     log(st, `${me.name} takes another turn.`);
   } else {
     st.turn = 1 - seat;
+    st.turnNo++;
   }
 }
 
@@ -337,7 +339,9 @@ function applyAction(st, seat, a) {
         for (let i = 0; i < n; i++) st.bag.push(c);
       }
       shuffle(st.bag);
-      log(st, `${me.name} discards ${pend.count} token(s).`);
+      const dropped = Object.entries(t).filter(([, n]) => n > 0)
+        .map(([c, n]) => `${n}× ${GEM_NAMES[c]}`).join(', ');
+      log(st, `${me.name} discards ${dropped}.`);
     }
     st.pending.shift();
     maybeEndTurn(st);
@@ -436,7 +440,9 @@ function applyAction(st, seat, a) {
       }
       shuffle(st.bag);
       take();
-      log(st, `${me.name} buys a tier ${card.t} card${card.pts ? ` (${card.pts} pts)` : ''}.`);
+      const cardColor = card.b === 'x' ? 'wild' : (card.b ? GEM_NAMES[card.b] : '');
+      const desc = `${cardColor ? cardColor + ' ' : ''}tier ${card.t} card`;
+      log(st, `${me.name} buys a ${desc}${card.pts ? ` (${card.pts} pts)` : ''}.`);
       applyCardEffects(st, seat, card);
       st.done = true;
       maybeEndTurn(st);
