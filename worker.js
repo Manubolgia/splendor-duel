@@ -6,7 +6,20 @@
 // The game rules live in engine.js (shared with the browser for offline play).
 
 import './engine.js';
-const { newGame, applyAction, publicState } = globalThis.SplendorEngine;
+const { newGame, applyAction, publicState, DEFAULT_RULES } = globalThis.SplendorEngine;
+
+// Parse a "points-crowns-color" rules string (e.g. "22-7-9") into a rules
+// object, or null (engine then falls back to the official defaults). Only the
+// two shipped presets are accepted; anything else falls back to traditional.
+function parseRules(s) {
+  if (!s) return null;
+  const m = /^(\d+)-(\d+)-(\d+)$/.exec(s);
+  if (!m) return null;
+  const r = { points: +m[1], crowns: +m[2], color: +m[3] };
+  const ok = (a, b) => a.points === b.points && a.crowns === b.crowns && a.color === b.color;
+  if (ok(r, DEFAULT_RULES) || ok(r, { points: 22, crowns: 7, color: 9 })) return r;
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Durable Object: one room per 4-letter code
@@ -35,7 +48,8 @@ export class GameRoom {
       const room = await this.load();
       const fresh = !room || room.game?.phase === 'over' || Date.now() - room.createdAt > 12 * 3600 * 1000;
       if (!fresh) return new Response('busy', { status: 409 });
-      this.room = { game: null, seats: [], createdAt: Date.now() };
+      const rules = parseRules(url.searchParams.get('rules'));
+      this.room = { game: null, seats: [], createdAt: Date.now(), rules };
       await this.save();
       return new Response('ok');
     }
@@ -74,7 +88,7 @@ export class GameRoom {
       }
 
       if (room.seats.length === 2 && !room.game) {
-        room.game = newGame(room.seats.map((s) => s.name), 0);
+        room.game = newGame(room.seats.map((s) => s.name), 0, room.rules);
       }
       await this.save();
 
@@ -135,7 +149,7 @@ export class GameRoom {
     } else if (msg.t === 'rematch' && this.room.game && this.room.game.phase === 'over') {
       // Loser of the previous game (or the other player) goes first.
       const first = 1 - this.room.game.firstSeat;
-      this.room.game = newGame(this.room.seats.map((s) => s.name), first);
+      this.room.game = newGame(this.room.seats.map((s) => s.name), first, this.room.rules);
       await this.save();
       this.broadcast();
     } else if (msg.t === 'leave') {
@@ -194,10 +208,12 @@ export default {
     }
 
     if (url.pathname === '/api/create' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const rulesQ = parseRules(body.rules) ? '?rules=' + encodeURIComponent(body.rules) : '';
       for (let attempt = 0; attempt < 8; attempt++) {
         const code = randomCode();
         const stub = env.ROOM.get(env.ROOM.idFromName(code));
-        const res = await stub.fetch('https://room/create');
+        const res = await stub.fetch('https://room/create' + rulesQ);
         if (res.ok) {
           return new Response(JSON.stringify({ code }), {
             headers: { 'Content-Type': 'application/json', ...CORS },

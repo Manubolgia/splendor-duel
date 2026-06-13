@@ -160,7 +160,19 @@ function zeroColors() {
   return { w: 0, u: 0, g: 0, r: 0, k: 0 };
 }
 
-function newGame(names, firstSeat = 0) {
+// Default win thresholds — the official ("traditional") Splendor Duel rules.
+const DEFAULT_RULES = { points: 20, crowns: 10, color: 10 };
+
+function normalizeRules(rules) {
+  const r = rules || {};
+  return {
+    points: r.points || DEFAULT_RULES.points,
+    crowns: r.crowns || DEFAULT_RULES.crowns,
+    color: r.color || DEFAULT_RULES.color,
+  };
+}
+
+function newGame(names, firstSeat = 0, rules = null) {
   const bag = [];
   for (const [c, n] of Object.entries(TOKEN_SUPPLY)) for (let i = 0; i < n; i++) bag.push(c);
   shuffle(bag);
@@ -188,6 +200,7 @@ function newGame(names, firstSeat = 0) {
   players[1 - firstSeat].priv = 1;
   const st = {
     phase: 'playing',
+    rules: normalizeRules(rules),
     board: Array(25).fill(null),
     bag,
     decks,
@@ -317,9 +330,10 @@ function queueRoyals(st, seat) {
 
 function checkWin(st, seat) {
   const me = st.players[seat];
-  if (me.points >= 20) return 'points';
-  if (me.crowns >= 10) return 'crowns';
-  for (const c of COLORS) if (me.cardPts[c] >= 10) return 'color';
+  const R = st.rules || DEFAULT_RULES;
+  if (me.points >= R.points) return 'points';
+  if (me.crowns >= R.crowns) return 'crowns';
+  for (const c of COLORS) if (me.cardPts[c] >= R.color) return 'color';
   return null;
 }
 
@@ -338,7 +352,8 @@ function maybeEndTurn(st) {
     st.phase = 'over';
     st.winner = seat;
     st.winReason = reason;
-    const why = { points: '20 prestige points', crowns: '10 crowns', color: '10 points in one color' }[reason];
+    const R = st.rules || DEFAULT_RULES;
+    const why = { points: `${R.points} prestige points`, crowns: `${R.crowns} crowns`, color: `${R.color} points in one color` }[reason];
     log(st, `${me.name} wins with ${why}!`);
     return;
   }
@@ -551,13 +566,14 @@ const AB_SCORE = { again: 2.5, steal: 1.5, take: 1, priv: 1.2 };
 
 function aiCardScore(st, seat, card, level) {
   const me = st.players[seat];
+  const R = st.rules || DEFAULT_RULES;
   let s = card.pts * 3 + (card.crowns || 0) * 2.5 + (card.ab ? AB_SCORE[card.ab] : 0);
   if (card.b) s += 1.2;
   // Immediate win conditions dominate everything else.
-  if (me.points + card.pts >= 20) s += 1000;
-  if (me.crowns + (card.crowns || 0) >= 10) s += 1000;
-  if (card.b && card.b !== 'x' && me.cardPts[card.b] + card.pts >= 10) s += 1000;
-  if (card.b === 'x' && COLORS.some((c) => me.bonus[c] > 0 && me.cardPts[c] + card.pts >= 10)) s += 1000;
+  if (me.points + card.pts >= R.points) s += 1000;
+  if (me.crowns + (card.crowns || 0) >= R.crowns) s += 1000;
+  if (card.b && card.b !== 'x' && me.cardPts[card.b] + card.pts >= R.color) s += 1000;
+  if (card.b === 'x' && COLORS.some((c) => me.bonus[c] > 0 && me.cardPts[c] + card.pts >= R.color)) s += 1000;
   return s;
 }
 
@@ -678,9 +694,10 @@ function aiResolve(st, seat, level) {
   const me = st.players[seat], op = st.players[1 - seat];
   const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 
+  const R = st.rules || DEFAULT_RULES;
   if (p.type === 'color') {
     const owned = COLORS.filter((c) => me.bonus[c] > 0);
-    const val = (c) => (me.cardPts[c] + p.pts >= 10 ? 1000 : 0) + me.cardPts[c] * 0.4 + me.bonus[c] * 0.2;
+    const val = (c) => (me.cardPts[c] + p.pts >= R.color ? 1000 : 0) + me.cardPts[c] * 0.4 + me.bonus[c] * 0.2;
     const c = level === 'easy' ? rnd(owned) : owned.sort((a, b) => val(b) - val(a))[0];
     return { type: 'resolve', resolve: { type: 'color', color: c } };
   }
@@ -702,7 +719,7 @@ function aiResolve(st, seat, level) {
     else {
       let best = -Infinity;
       st.royals.forEach((r, i) => {
-        const v = (me.points + r.pts >= 20 ? 1000 : 0) + r.pts * 3 + (r.ab ? AB_SCORE[r.ab] : 0);
+        const v = (me.points + r.pts >= R.points ? 1000 : 0) + r.pts * 3 + (r.ab ? AB_SCORE[r.ab] : 0);
         if (v > best) { best = v; idx = i; }
       });
     }
@@ -753,7 +770,7 @@ function aiAction(st, seat, level) {
 // ---------------------------------------------------------------------------
 
 globalThis.SplendorEngine = {
-  COLORS, TOKEN_SUPPLY, GEM_NAMES,
+  COLORS, TOKEN_SUPPLY, GEM_NAMES, DEFAULT_RULES,
   newGame, applyAction, publicState, lineOK, computePayment, tokenTotal,
   aiAction,
 };
