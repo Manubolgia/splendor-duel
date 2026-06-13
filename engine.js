@@ -75,7 +75,7 @@ function buildDecks() {
     C({ k: 1, r: 1, g: 1, u: 1 }, 'w'),
     C({ p: 1, g: 2, u: 2 }, 'w', 0, 0, 'again'),
     C({ k: 2, r: 2 }, 'w', 0, 0, 'take'),
-    C({ k: 3, r: 2 }, 'w', 1),
+    C({ r: 3, g: 2 }, 'w', 1),
     C({ u: 3 }, 'w', 0, 1),
     // Specials
     C({ p: 1, r: 4 }, null, 3),
@@ -102,12 +102,12 @@ function buildDecks() {
     C({ p: 1, k: 2, u: 2, w: 2 }, 'g', 2, 1),
     C({ p: 1, g: 4, u: 2 }, 'g', 2, 0, 'priv'),
     // Blue bonus
-    C({ k: 3, r: 4 }, 'u', 1, 0, 'steal'),
+    C({ k: 3, g: 4 }, 'u', 1, 0, 'steal'),
     C({ r: 2, g: 5 }, 'u', 1, 0, null, 2),
     C({ p: 1, k: 2, r: 2, w: 2 }, 'u', 2, 1),
     C({ p: 1, u: 4, w: 2 }, 'u', 2, 0, 'priv'),
     // White bonus
-    C({ k: 3, r: 4 }, 'w', 1, 0, 'steal'),
+    C({ r: 3, u: 4 }, 'w', 1, 0, 'steal'),
     C({ g: 2, u: 5 }, 'w', 1, 0, null, 2),
     C({ p: 1, k: 2, r: 2, g: 2 }, 'w', 2, 1),
     C({ p: 1, k: 2, w: 4 }, 'w', 2, 0, 'priv'),
@@ -126,7 +126,7 @@ function buildDecks() {
     C({ p: 1, r: 3, u: 3, w: 5 }, 'g', 3, 2),
     C({ r: 2, g: 6, u: 2 }, 'g', 4),
     C({ p: 1, k: 5, g: 3, w: 3 }, 'u', 3, 2),
-    C({ r: 2, u: 6, w: 2 }, 'u', 4),
+    C({ g: 2, u: 6, w: 2 }, 'u', 4),
     C({ p: 1, k: 3, r: 5, u: 3 }, 'w', 3, 2),
     C({ k: 2, u: 2, w: 6 }, 'w', 4),
     // Specials
